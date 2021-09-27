@@ -1,4 +1,4 @@
-# COMP3004- cuACS(Carleton University Animal Care System)
+
 
 #Developers
 Ibrahim Ayyoub	101080723
@@ -14,9 +14,10 @@ animal.cc, bird.cc, mammal.cc, server.cc, animalcareshelter.cc, main.cc, mainwin
 
 #running the system
 
-First, untar the d1.tar file with the following commad(make sure the terminal is in the downloads directory): tar -xvf d1.tar
+First, untar the d4.tar file with the following commad(make sure the terminal is in the downloads directory): tar -xvf d4.tar
 Build the application by calling make : make
 Run the application by calling the executable: ./COMP3004
+NOTE: QT framework is required to run this program
 
 # Description
 
