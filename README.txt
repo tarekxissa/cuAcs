@@ -1,10 +1,8 @@
-
-
 #Developers
-Ibrahim Ayyoub	101080723
-Tarek Issa	101071788
-Salim Erradi	101071241
-Yvan Niyonzima 101052183
+Ibrahim Ayyoub	
+Tarek Issa	
+Salim Erradi	
+Yvan Niyonzima 
 
 #HEADERS
 animal.h, bird.h, mammal.h, server.h,linkedlist.h, animacareshelter.h, main.h, mainwindow.h, amphibian.h, reptile.h, fish.h 
