@@ -1,0 +1,1186 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+#include <QTableWidgetItem>
+#include <typeinfo>
+#include <QSqlQuery>
+#include <string>
+#include <QString>
+#include <QStringList>
+#include <QStringListModel>
+
+
+using namespace std;
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+
+    this->setFixedSize(QSize(1000, 650));
+    database = new Server();
+    database->openDataBase();
+    database->retrieveAnimals(animalsClientsList.animals);
+    database->retrieve(animalsClientsList.clients);
+
+
+
+}
+
+MainWindow::~MainWindow()
+{
+
+
+    //1. Store the array(break it down and store its elements) into a database,
+
+    database->updateAnimals(animalsClientsList.animals);
+    database->update(animalsClientsList.clients);
+    delete database;
+    delete ui;
+
+
+}
+
+
+/*
+
+    -1. this method is for printing a debugging.
+*/
+QTextStream& MainWindow::qStdout(){
+    static QTextStream ts(stdout);
+    return ts;
+}
+
+
+/*
+    * This function will transation you to the staff view and from there the staff can navigate through the program.
+*/
+void MainWindow::on_staffBtn_clicked()
+{
+    /*
+     * 1. Transaition to Staff View.
+     * 2. Hide all other windows, like differnt views.
+    */
+
+    //1.
+    ui->stackedWidget->setCurrentIndex(1);
+
+    //2.
+
+    //Adding an animal hiding
+    ui->addAnimalPopUp->hide();
+    ui->addAnimalPopUp->setGeometry(10,10,651,521);
+    ui->errorMessage->hide();
+    ui->successMessage->hide();
+    //end of adding an animal hiding
+    ui->viewAnimalsListPopUp->hide();
+    ui->viewAnimalsListPopUp->setGeometry(10,10,651,521);
+
+    //Adding a client ui hiding
+    ui->addClientPopUp->hide();
+    ui->addClientPopUp->setGeometry(10,10,651,521);
+    ui->clientSucessMessage->hide();
+    ui->clientErrMessage->hide();
+    //End of adding a client ui hiding
+
+    ui->viewClientsListPopUp->hide();
+    ui->viewClientsListPopUp->setGeometry(10,10,651,521);
+
+
+    //Hiding Other btns
+    ui->viewAnimalDetailsBtn->hide();
+
+
+
+    //Hiding input fields
+    ui->animalPhysFinnSizeField->hide();
+    ui->animalPhysScaleTypeField->hide();
+    ui->animalPhysFurLengthField->hide();
+    ui->animalPhysFurColourField->hide();
+    ui->animalPhysWingSpanField->hide();
+    ui->animalPhysBeakLengthField->hide();
+    ui->animalPhysBeakColourField->hide();
+    ui->animalPhysBuildField->hide();
+    ui->animalPhysBodyPatternField->hide();
+    ui->animalPhysBodyLengthField->hide();
+}
+
+/*
+    - The function below views the client view and from there the client can navigate
+*/
+void MainWindow::on_clientBtn_clicked()
+{
+    /*
+     * 1. Authenticate the user login (only user and pass)
+     * 2. Once true, redirect to the Client's UI.
+    */
+    ui->stackedWidget->setCurrentIndex(2);
+
+    //2. once logged in show the UI(for now temp, change it later).
+
+    ui->viewAnimalsFromClientView->hide();
+    ui->viewAnimalsFromClientView->setGeometry(10,10,641,521);
+}
+
+/*
+    - The function below views the menu for adding an animal
+*/
+void MainWindow::on_addClientBtn_clicked()
+{
+    int CLIENT_VIEW_BTN_ID = 2;
+    showTheCorrectWindow(&CLIENT_VIEW_BTN_ID);
+
+    //Form should be at index 1 so the staff fills the proper info.
+    ui->clientForm->setCurrentIndex(1);
+    clearFields(1);
+
+    //Reset validation.
+    ui->clientErrMessage->hide();
+    ui->clientSucessMessage->hide();
+}
+
+
+/*
+    - The function below views the menu for adding an animal
+*/
+void MainWindow::on_animalAddBtn_clicked()
+{
+    int ANIMAL_VIEW_BTN_ID = 1;
+    showTheCorrectWindow(&ANIMAL_VIEW_BTN_ID);
+
+    //Form should be at index 1 so the staff fills the proper info(for animal).
+    ui->animalForm->setCurrentIndex(0);
+    clearFields(0);
+    //Reset validation.
+    ui->errorMessage->hide();
+    ui->successMessage->hide();
+}
+
+/*
+    - The function below closes the menu for adding a animal and cancels adding an animal
+*/
+void MainWindow::on_closeAnimalBtn_clicked(){
+    ui->addAnimalPopUp->hide();
+    ui->errorMessage->hide();
+    ui->successMessage->hide();
+    clearFields(0);
+
+}
+
+
+/*
+    -1. Adds an animal to the list.
+    -2. Adds the animal to the Databse.
+*/
+void MainWindow::on_saveAnimalBtn_clicked()
+{
+
+    //To convert to a string do the following.
+    //.toUtf8().constData() on a QString
+
+
+    //Animals info delcartion
+    QString animalName, animalType, animalColour, animalAge, animalGender, animalSpecies,animalHeight, animalWeight;
+
+    //Animals Non-Physical Attributes decleration
+    QString individualism, activesness,intelligence,affectionism,displicine,assertiveness,intution,implusiveness,dirunal,stamina,enthausatic,appetite;
+
+    //Animals Physical Attributes decleration
+    QString furLength, furColour, bodyPattern, bodyLength,build,wingSpan,beakLength,beakColour,scaleType,finnSize;
+
+    //Animals info initilzation
+    animalName = ui->animalNameField->toPlainText().trimmed().toLower();
+    animalType = ui->animalTypeField->currentText().toLower();
+    animalWeight =  ui->animalWeightField->toPlainText().trimmed().toLower();
+    animalHeight =  ui->animalHeightField->toPlainText().trimmed().toLower();
+    animalColour = ui->animalColourField->currentText().toLower();
+    animalAge = ui->animalAgeField->currentText().toLower();
+    animalGender = ui->animalGenderField->currentText().toLower();
+    animalSpecies = ui->animalSpeciesField->currentText().toLower();
+
+    //Animals Physical Attrubuites initilzation
+    individualism = ui->animalIndividualismField->currentText().toLower();
+    activesness = ui->animalActivenessField->currentText().toLower();
+    intelligence = ui->animalIntelligenceField->currentText().toLower();
+    affectionism = ui->animalAffectionismField->currentText().toLower();
+    displicine = ui->animalDisciplineField->currentText().toLower();
+    assertiveness =  ui->animalAssertivenessField->currentText().toLower();
+    intution =  ui->animalIntuitionField->currentText().toLower();
+    implusiveness  = ui->animalImpulsivenessField->currentText().toLower();
+    dirunal  = ui->animalDiurnalField->currentText().toLower();
+    stamina  = ui->animalStaminaField->currentText().toLower();
+    enthausatic  = ui->animalEnthusiasticField->currentText().toLower();
+    appetite  = ui->animalAppetiteField->currentText().toLower();
+
+
+    //Animals Non-Physical Attrubuites initilzation
+    //,build,
+    scaleType =  ui->animalPhysScaleTypeField->currentText().toLower();
+    finnSize  =  ui->animalPhysFinnSizeField->currentText().toLower();
+    furLength =  ui->animalPhysFurLengthField->currentText().toLower();
+    furColour =  ui->animalPhysFurColourField->currentText().toLower();
+    wingSpan  =  ui->animalPhysWingSpanField->currentText().toLower();
+    beakLength=  ui->animalPhysBeakLengthField->currentText().toLower();
+    beakColour=  ui->animalPhysBeakColourField->currentText().toLower();
+    bodyPattern= ui->animalPhysBodyPatternField->currentText().toLower();
+    bodyLength=  ui->animalPhysBodyLengthField->currentText().toLower();
+    build =     ui->animalPhysBuildField->currentText().toLower();
+
+
+    //DEBUGGING PURPOSES, nice and clean.
+    qDebug ("animal name: %s",animalName.toUtf8().constData());
+    qDebug ("animal colour: %s",animalColour.toUtf8().constData());
+    qDebug ("animal age: %s",animalAge.toUtf8().constData());
+    qDebug ("animal gender: %s",animalGender.toUtf8().constData());
+    qDebug ("animal type: %s",animalType.toUtf8().constData());
+    qDebug ("animal species: %s",animalSpecies.toUtf8().constData());
+    qDebug ("animal Height: %s",animalHeight.toUtf8().constData());
+    qDebug ("animal Weight: %s",animalWeight.toUtf8().constData());
+    qDebug ("animal individualism: %s",individualism.toUtf8().constData());
+    qDebug ("animal intelligence: %s",intelligence.toUtf8().constData());
+    qDebug ("animal affectionism: %s",affectionism.toUtf8().constData());
+    qDebug ("animal displicine: %s",displicine.toUtf8().constData());
+    qDebug ("animal assertiveness: %s",assertiveness.toUtf8().constData());
+    qDebug ("animal intution: %s",intution.toUtf8().constData());
+    qDebug ("animal implusiveness: %s",implusiveness.toUtf8().constData());
+    qDebug ("animal dirunal: %s",dirunal.toUtf8().constData());
+    qDebug ("animal stamina: %s",stamina.toUtf8().constData());
+    qDebug ("animal enthausatic: %s",enthausatic.toUtf8().constData());
+    qDebug ("animal appetite: %s",appetite.toUtf8().constData());
+    qDebug ("animal activesness: %s",activesness.toUtf8().constData());
+
+    /*
+     1. if the user doesn't fill out the forms properly then just display them an error message and return, so that the code is fast and efficent.
+     2. if a user is correct the second time they re-input the data, then hide the error message
+    */
+    //2.
+     ui->errorMessage->hide();
+     ui->successMessage->hide();
+
+
+    //1.
+     if(animalName.isNull() || animalName.isEmpty() && animalName.length() < 3 || animalWeight.isNull() || animalWeight.isEmpty() && animalWeight.length() < 3 ||
+        animalHeight.isNull() || animalHeight.isEmpty() && animalHeight.length() < 3 || ui->animalColourField->currentIndex() == 0 || ui->animalSpeciesField->currentIndex() == 0 ||
+        ui->animalTypeField->currentIndex() == 0 || ui->animalAgeField->currentIndex() == 0 || ui->animalGenderField->currentIndex() == 0                      ||
+        ui->animalIndividualismField->currentIndex() == 0 || ui->animalActivenessField->currentIndex() == 0 || ui->animalIntelligenceField->currentIndex() == 0||
+        ui->animalAffectionismField->currentIndex() == 0 || ui->animalDisciplineField->currentIndex() == 0 || ui->animalAssertivenessField->currentIndex() == 0||
+        ui->animalIntuitionField->currentIndex() == 0 || ui->animalImpulsivenessField->currentIndex() == 0 || ui->animalDiurnalField->currentIndex() == 0      ||
+        ui->animalStaminaField->currentIndex() == 0 || ui->animalEnthusiasticField->currentIndex() == 0 || ui->animalAppetiteField->currentIndex() == 0         )
+    {
+
+         //Check the physical attriubite fields if they are empty for the animals
+         if(animalType == "dog" || animalType == "cat"){
+             if(ui->animalPhysFurLengthField->currentIndex() == 0 || ui->animalPhysFurColourField->currentIndex() == 0 || ui->animalPhysBuildField->currentIndex() == 0   ){
+                 qDebug ("The user is stupid, and didn't follow the instructions properly.");
+                 ui->errorMessage->show();
+                 ui->successMessage->hide();
+                 return;
+             }
+         }
+         else if (animalType == "parrot" || animalType == "finch"){
+             if(ui->animalPhysBeakColourField->currentIndex() == 0 || ui->animalPhysBeakLengthField->currentIndex() == 0 || ui->animalPhysWingSpanField->currentIndex() == 0   ){
+                 qDebug ("The user is stupid, and didn't follow the instructions properly.");
+                 ui->errorMessage->show();
+                 ui->successMessage->hide();
+                 return;
+             }
+         }
+         else if (animalType == "frog" || animalType == "salamander"){
+             if(ui->animalPhysBodyPatternField->currentIndex() == 0 || ui->animalPhysBodyLengthField->currentIndex() == 0 || ui->animalPhysBuildField->currentIndex() == 0   ){
+                 qDebug ("The user is stupid, and didn't follow the instructions properly.");
+                 ui->errorMessage->show();
+                 ui->successMessage->hide();
+                 return;
+             }
+         }
+         else if (animalType == "snake" || animalType == "lizard"){
+             if(ui->animalPhysBodyPatternField->currentIndex() == 0 || ui->animalPhysBodyLengthField->currentIndex() == 0 || ui->animalPhysScaleTypeField->currentIndex() == 0   ){
+                 qDebug ("The user is stupid, and didn't follow the instructions properly.");
+                 ui->errorMessage->show();
+                 ui->successMessage->hide();
+                 return;
+             }
+         }
+         else if (animalType == "betta" || animalType == "goldfish"){
+             if(ui->animalPhysBodyPatternField->currentIndex() == 0 || ui->animalPhysBodyLengthField->currentIndex() == 0 || ui->animalPhysFinnSizeField->currentIndex() == 0   ){
+                 qDebug ("The user is stupid, and didn't follow the instructions properly.");
+                 ui->errorMessage->show();
+                 ui->successMessage->hide();
+                 return;
+             }
+         }
+
+
+    }
+
+
+    /*
+     1.Empty the fields so its a nice UI and simple to use.
+     2. Add the data to a List
+     3. Once added to a list, call a method update list.
+    */
+
+    //1.
+     clearFields(0);
+
+    //2.
+    Animal* currentAnimalBeingAdded;
+     //animalType is specifying to indicate for animal constructor which type of animal to add.
+     if(animalType == "dog" || animalType == "cat"){
+        currentAnimalBeingAdded = new Mammal(animalName.toUtf8().constData(),animalSpecies.toUtf8().constData());
+        currentAnimalBeingAdded->setPhysCharacteristics(build.toUtf8().constData(),furLength.toUtf8().constData(),furColour.toUtf8().constData());
+
+     }
+     else if(animalType == "snake" || animalType == "lizard"){
+        currentAnimalBeingAdded = new Reptile(animalName.toUtf8().constData(),animalSpecies.toUtf8().constData());
+        currentAnimalBeingAdded->setPhysCharacteristics(bodyLength.toUtf8().constData(),bodyPattern.toUtf8().constData(),scaleType.toUtf8().constData());
+     }
+     else if(animalType == "finch" || animalType == "parrot"){
+        currentAnimalBeingAdded = new Bird(animalName.toUtf8().constData(),animalSpecies.toUtf8().constData());
+        currentAnimalBeingAdded->setPhysCharacteristics(wingSpan.toUtf8().constData(),beakLength.toUtf8().constData(),beakColour.toUtf8().constData());
+     }
+     else if(animalType == "betta" || animalType == "goldfish"){
+        currentAnimalBeingAdded= new Fish(animalName.toUtf8().constData(),animalSpecies.toUtf8().constData());
+        currentAnimalBeingAdded->setPhysCharacteristics(bodyPattern.toUtf8().constData(),bodyLength.toUtf8().constData(),finnSize.toUtf8().constData());
+
+     }
+     else if(animalType == "frog" || animalType == "salamander"){
+        currentAnimalBeingAdded = new Amphibian(animalName.toUtf8().constData(),animalSpecies.toUtf8().constData());
+        currentAnimalBeingAdded->setPhysCharacteristics(bodyPattern.toUtf8().constData(),bodyLength.toUtf8().constData(),build.toUtf8().constData());
+     }
+
+     //Age,gender,colour,height,weight,typeOfAnimal
+      currentAnimalBeingAdded->setBasicInfo(animalAge.toUtf8().constData(),animalGender.toUtf8().constData(),animalColour.toUtf8().constData(),
+                                            animalHeight.toUtf8().constData(),animalWeight.toUtf8().constData(),animalType.toUtf8().constData());
+
+
+      currentAnimalBeingAdded->setNonPhysicalAttributes(activesness.toUtf8().constData(),enthausatic.toUtf8().constData(),individualism.toUtf8().constData(),affectionism.toUtf8().constData(),intelligence.toUtf8().constData()
+                                                              ,displicine.toUtf8().constData(),assertiveness.toUtf8().constData(),implusiveness.toUtf8().constData(),intution.toUtf8().constData(),dirunal.toUtf8().constData(),stamina.toUtf8().constData(),appetite.toUtf8().constData());
+
+
+      animalsClientsList.animals.add(&currentAnimalBeingAdded);
+//      animalsClientsList.animals.print();
+
+
+      ui->animalForm->setCurrentIndex(1); // Reset the flow of adding an animal.
+      ui->successMessage->show(); // Show success
+
+
+
+
+
+}
+
+/*
+    *This function adds a client to the db and viewClientsList.
+*/
+void MainWindow::on_saveClientBtn_clicked()
+{
+
+    //Clients Basic info decleration.
+    QString clientFName, clientLName, clientAge, clientEmail, clientGender, clientPhone;
+
+    //Clients Attrubuites decleration
+    QString individualism, activesness,intelligence,affectionism,displicine,assertiveness,intution,implusiveness,dirunal,stamina,enthausatic,appetite;
+
+
+    //Clients Basic info init.
+    clientFName = ui->clientFNameField->toPlainText().trimmed().toLower();
+    clientLName =  ui->clientLNameField->toPlainText().trimmed().toLower();
+    clientAge =  ui->clientAgeField->toPlainText().trimmed().toLower();
+    clientEmail = ui->clientEmailField->toPlainText().trimmed().toLower();
+    clientPhone = ui->clientPhoneField->toPlainText().trimmed().toLower();
+    clientGender = ui->clientGenderFIeld->currentText().toLower();
+
+
+    //Clients Attrubuites init.
+    individualism = ui->clientIndividualismField->currentText().toLower();
+    activesness = ui->clientActivenessField->currentText().toLower();
+    intelligence = ui->clientIntelligenceField->currentText().toLower();
+    affectionism = ui->clientAffectionismField->currentText().toLower();
+    displicine = ui->clientDisciplineField->currentText().toLower();
+    assertiveness =  ui->clientAssertivenessField->currentText().toLower();
+    intution =  ui->clientIntuitionField->currentText().toLower();
+    implusiveness  = ui->clientImpulsivenessField->currentText().toLower();
+    dirunal  = ui->clientDiurnalField->currentText().toLower();
+    stamina  = ui->clientStaminaField->currentText().toLower();
+    enthausatic  = ui->clientEnthusiasticField->currentText().toLower();
+    appetite  = ui->clientAppetiteField->currentText().toLower();
+
+
+
+
+
+    //Debugging purposes, just a nice way to see the names as inputed(from user ofc.)
+    qDebug ("Client Fname: %s",clientFName.toUtf8().constData());
+    qDebug ("Client Lname: %s",clientLName.toUtf8().constData());
+    qDebug ("Client age: %s",clientAge.toUtf8().constData());
+    qDebug ("Client email: %s",clientEmail.toUtf8().constData());
+    qDebug ("Client phone: %s",clientPhone.toUtf8().constData());
+    qDebug ("Client gender: %s",clientGender.toUtf8().constData());
+    qDebug ("Client individualism: %s",individualism.toUtf8().constData());
+    qDebug ("Client intelligence: %s",intelligence.toUtf8().constData());
+    qDebug ("Client affectionism: %s",affectionism.toUtf8().constData());
+    qDebug ("Client displicine: %s",displicine.toUtf8().constData());
+    qDebug ("Client assertiveness: %s",assertiveness.toUtf8().constData());
+    qDebug ("Client intution: %s",intution.toUtf8().constData());
+    qDebug ("Client implusiveness: %s",implusiveness.toUtf8().constData());
+    qDebug ("Client dirunal: %s",dirunal.toUtf8().constData());
+    qDebug ("Client stamina: %s",stamina.toUtf8().constData());
+    qDebug ("Client enthausatic: %s",enthausatic.toUtf8().constData());
+    qDebug ("Client appetite: %s",appetite.toUtf8().constData());
+    qDebug ("Client activesness: %s",activesness.toUtf8().constData());
+
+
+    //Hide error and succsess mesages.
+    ui->clientErrMessage->hide();
+    ui->clientSucessMessage->hide();
+
+    //Check if fields are empty, or not all fullied yet. Note also I'm checking if they're empty or deafult selects, if they are true display message error and return to stop func execution.
+    if(clientFName.isNull() || clientFName.isEmpty() && clientFName.length() < 3 || clientLName.isNull() || clientLName.isEmpty() && clientLName.length() < 3 ||
+       clientPhone.isNull() || clientPhone.isEmpty() && clientPhone.length() < 3 || clientEmail.isNull() || clientEmail.isEmpty() && clientEmail.length() < 3 ||
+       clientGender.isNull() || clientGender.isEmpty() && clientGender.length() < 3 || clientAge.isNull() || clientAge.isEmpty() && clientAge.length() < 1    ||
+       ui->clientIndividualismField->currentIndex() == 0 || ui->clientActivenessField->currentIndex() == 0 || ui->clientIntelligenceField->currentIndex() == 0||
+       ui->clientAffectionismField->currentIndex() == 0 || ui->clientDisciplineField->currentIndex() == 0 || ui->clientAssertivenessField->currentIndex() == 0||
+       ui->clientIntuitionField->currentIndex() == 0 || ui->clientImpulsivenessField->currentIndex() == 0 || ui->clientDiurnalField->currentIndex() == 0      ||
+       ui->clientStaminaField->currentIndex() == 0 || ui->clientEnthusiasticField->currentIndex() == 0 || ui->clientAppetiteField->currentIndex() == 0         ){
+
+        //Code for the "if condition" above, starts here.
+
+        qDebug ("The user is stupid, and didn't follow the instructions properly.");
+        ui->clientErrMessage->show();
+        ui->clientSucessMessage->hide();
+        return;
+
+    }
+
+    /*
+     1.Empty the fields so its a nice UI and simple to use.
+     2. Add the client to a linkedList
+     3. Once added to a list, call a method update list.
+    */
+
+    //1.
+     clearFields(1); //important the value 1 here specifies which fields to clear
+
+
+    //2.
+    Client* currentClientBeingAdded = new Client(clientFName.toUtf8().constData(),clientLName.toUtf8().constData(),clientAge.toUtf8().constData(),clientEmail.toUtf8().constData(),clientPhone.toUtf8().constData(),clientGender.toUtf8().constData());
+    currentClientBeingAdded->setNonPhysicalAttributes(activesness.toUtf8().constData(),enthausatic.toUtf8().constData(),individualism.toUtf8().constData(),affectionism.toUtf8().constData(),intelligence.toUtf8().constData(),displicine.toUtf8().constData(),assertiveness.toUtf8().constData(),implusiveness.toUtf8().constData(),intution.toUtf8().constData(),dirunal.toUtf8().constData(),stamina.toUtf8().constData(),appetite.toUtf8().constData());
+
+    animalsClientsList.clients.add(&currentClientBeingAdded);
+    animalsClientsList.clients.print();
+
+    ui->clientForm->setCurrentIndex(1); // Reset the flow of adding a client.
+    ui->clientSucessMessage->show(); // Show success
+}
+
+/*
+ * The function below, is just to clear the fields once the user inputed the data for either adding animal or client fields.
+*/
+void MainWindow::clearFields(int typeOfAdding){
+
+    //Clearing "Adding Animal" Fields
+    if(typeOfAdding == 0){
+        ui->animalNameField->setText("");
+        ui->animalTypeField->setCurrentIndex(0);
+        ui->animalAgeField->setCurrentIndex(0);
+        ui->animalColourField->setCurrentIndex(0);
+        ui->animalSpeciesField->setCurrentIndex(0);
+        ui->animalHeightField->setText("");
+        ui->animalWeightField->setText("");
+        ui->animalGenderField->setCurrentIndex(0);
+
+        //Clearing Attrubites(Animals)
+        ui->animalIndividualismField->setCurrentIndex(0);
+        ui->animalActivenessField->setCurrentIndex(0);
+        ui->animalIntelligenceField->setCurrentIndex(0);
+        ui->animalAffectionismField->setCurrentIndex(0);
+        ui->animalDisciplineField->setCurrentIndex(0);
+        ui->animalAssertivenessField->setCurrentIndex(0);
+        ui->animalIntuitionField->setCurrentIndex(0);
+        ui->animalImpulsivenessField->setCurrentIndex(0);
+        ui->animalDiurnalField->setCurrentIndex(0);
+        ui->animalStaminaField->setCurrentIndex(0);
+        ui->animalEnthusiasticField->setCurrentIndex(0);
+        ui->animalAppetiteField->setCurrentIndex(0);
+    }
+    //Clearing "Adding Client" Fields
+    else if(typeOfAdding == 1){
+         //Clearing basic info
+         ui->clientFNameField->setText("");
+         ui->clientLNameField->setText("");
+         ui->clientAgeField->setText("");
+         ui->clientEmailField->setText("");
+         ui->clientPhoneField->setText("");
+         ui->clientGenderFIeld->setCurrentIndex(0);
+
+        //Clearing Attrubites(clients)
+        ui->clientIndividualismField->setCurrentIndex(0);
+        ui->clientActivenessField->setCurrentIndex(0);
+        ui->clientIntelligenceField->setCurrentIndex(0);
+        ui->clientAffectionismField->setCurrentIndex(0);
+        ui->clientDisciplineField->setCurrentIndex(0);
+        ui->clientAssertivenessField->setCurrentIndex(0);
+        ui->clientIntuitionField->setCurrentIndex(0);
+        ui->clientImpulsivenessField->setCurrentIndex(0);
+        ui->clientDiurnalField->setCurrentIndex(0);
+        ui->clientStaminaField->setCurrentIndex(0);
+        ui->clientEnthusiasticField->setCurrentIndex(0);
+        ui->clientAppetiteField->setCurrentIndex(0);
+
+    }
+
+}
+
+
+/*
+    * This event Listener function, checks what type of animal the user chooses. If they choose a dog, then all list of species for a dog appear.
+    * It also shows the list of physical attributes for an animal.
+*/
+
+void MainWindow::on_animalTypeField_currentTextChanged(const QString &typeOfAnimal)
+{
+    //Mammals
+    if(typeOfAnimal == "Dog"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"Pitbull"<<"Siberian Husky"<<"Bulldog" << "German Shepherd" <<"Boxer" <<"Pug");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysFurLengthField->show(); //Attriute 1 for a dog.
+        ui->animalPhysFurColourField->show(); //Attriute 2 for a dog.
+        ui->animalPhysBuildField->show();     //Attriute 3 for a dog.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysBodyPatternField->hide();
+        ui->animalPhysBodyLengthField->hide();
+        ui->animalPhysWingSpanField->hide();
+        ui->animalPhysBeakLengthField->hide();
+        ui->animalPhysBeakColourField->hide();
+        ui->animalPhysFinnSizeField->hide();
+        ui->animalPhysScaleTypeField->hide();
+
+
+
+    }
+    else if(typeOfAnimal == "Cat"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"Persian Cat"<<"Ragdoll"<<"Bengal Cat" << "Birman" <<"American Curl" <<"Savannah Cat");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysFurLengthField->show(); //Attriute 1 for a Cat.
+        ui->animalPhysFurColourField->show(); //Attriute 2 for a Cat.
+        ui->animalPhysBuildField->show();     //Attriute 3 for a Cat.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysBodyPatternField->hide();
+        ui->animalPhysBodyLengthField->hide();
+        ui->animalPhysWingSpanField->hide();
+        ui->animalPhysBeakLengthField->hide();
+        ui->animalPhysBeakColourField->hide();
+        ui->animalPhysFinnSizeField->hide();
+        ui->animalPhysScaleTypeField->hide();
+
+    }
+    // End of Mammals
+
+    // Birds
+    else if(typeOfAnimal == "Parrot"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"Grey Parrot"<<"Cockatiel"<<"Budgerigar" << "Sun Conure" <<"Kea" <<"Night Parrot");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysWingSpanField->show();   //Attriute 1 for a Parrot.
+        ui->animalPhysBeakLengthField->show(); //Attriute 2 for a Parrot.
+        ui->animalPhysBeakColourField->show(); //Attriute 3 for a Parrot.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysBodyPatternField->hide();
+        ui->animalPhysBodyLengthField->hide();
+        ui->animalPhysFinnSizeField->hide();
+        ui->animalPhysScaleTypeField->hide();
+        ui->animalPhysBuildField->hide();
+        ui->animalPhysFurLengthField->hide();
+        ui->animalPhysFurColourField->hide();
+    }
+    else if(typeOfAnimal == "Finch"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"House Finch"<<"Purple Finch"<<"Zebra Finch" << "American Goldfinch" <<"Java Sparrow" <<"Red Crossbill");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysWingSpanField->show();   //Attriute 1 for a finch.
+        ui->animalPhysBeakLengthField->show(); //Attriute 2 for a finch.
+        ui->animalPhysBeakColourField->show(); //Attriute 3 for a finch.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysBodyPatternField->hide();
+        ui->animalPhysBodyLengthField->hide();
+        ui->animalPhysFinnSizeField->hide();
+        ui->animalPhysScaleTypeField->hide();
+        ui->animalPhysBuildField->hide();
+        ui->animalPhysFurLengthField->hide();
+        ui->animalPhysFurColourField->hide();
+
+    }
+    // End of birds
+
+    // Fish
+    else if(typeOfAnimal == "Betta"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"Veiltail"<<"Crowntail"<<"Combtail" << "Double tail" <<"Spadetail" <<"Halfmoon" << "Delta" << "Super Delta" << "Rosetail");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysFinnSizeField->show(); //Attriute 1 for a Betta.
+        ui->animalPhysBodyLengthField->show(); //Attriute 2 for a Betta.
+        ui->animalPhysBodyPatternField->show(); //Attriute 3 for a Betta.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysScaleTypeField->hide();
+        ui->animalPhysBuildField->hide();
+        ui->animalPhysFurLengthField->hide();
+        ui->animalPhysFurColourField->hide();
+        ui->animalPhysWingSpanField->hide();
+        ui->animalPhysBeakLengthField->hide();
+        ui->animalPhysBeakColourField->hide();
+
+    }
+    else if(typeOfAnimal == "Goldfish"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"Comet"<<"Fantail"<<"Lionhead" << "Oranda" <<"Ryukin" <<"Bubble Eye" << "Shubunkin" << "Black Moor");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysFinnSizeField->show(); //Attriute 1 for a Goldfish.
+        ui->animalPhysBodyLengthField->show(); //Attriute 2 for a Goldfish.
+        ui->animalPhysBodyPatternField->show(); //Attriute 3 for a Goldfish.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysScaleTypeField->hide();
+        ui->animalPhysBuildField->hide();
+        ui->animalPhysFurLengthField->hide();
+        ui->animalPhysFurColourField->hide();
+        ui->animalPhysWingSpanField->hide();
+        ui->animalPhysBeakLengthField->hide();
+        ui->animalPhysBeakColourField->hide();
+
+    }
+    // End of fish.
+
+    // Amphibians
+    else if(typeOfAnimal == "Frog"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"Tailed Frog"<<"Toads"<<"Tree Frogs" << "Western Toad" <<"American Toad" <<"Fowler's toad" << "Oophaga" << "Spring peeper");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysBodyPatternField->show(); //Attriute 1 for a Frog.
+        ui->animalPhysBodyLengthField->show(); //Attriute 2 for a Frog.
+        ui->animalPhysBuildField->show(); //Attriute 3 for a Frog.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysScaleTypeField->hide();
+        ui->animalPhysFinnSizeField->hide();
+        ui->animalPhysFurLengthField->hide();
+        ui->animalPhysFurColourField->hide();
+        ui->animalPhysWingSpanField->hide();
+        ui->animalPhysBeakLengthField->hide();
+        ui->animalPhysBeakColourField->hide();
+
+    }
+    else if(typeOfAnimal == "Salamander"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"Fire Salamander"<<"Hellbender"<<"Tiger Salamander" << "Spotted Salamander" <<"Red Salamander" <<"Alpine Salamander" << "Spring Salamander" << "Marbled Salamander");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysBodyPatternField->show(); //Attriute 1 for a Salamander.
+        ui->animalPhysBodyLengthField->show(); //Attriute 2 for a Salamander.
+        ui->animalPhysBuildField->show(); //Attriute 3 for a Salamander.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysScaleTypeField->hide();
+        ui->animalPhysFinnSizeField->hide();
+        ui->animalPhysFurLengthField->hide();
+        ui->animalPhysFurColourField->hide();
+        ui->animalPhysWingSpanField->hide();
+        ui->animalPhysBeakLengthField->hide();
+        ui->animalPhysBeakColourField->hide();
+
+    }
+    // End of Amphibians
+
+    // Reptiles
+    else if(typeOfAnimal == "Snake"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"Garter Snake"<<"Rattlesnakes"<<"Water Snakes" << "Kingsnakes" <<"Milk Snake" <<"Pythons" << "King Cobra" << "Boa constrictor" << "Ball Python");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysBodyPatternField->show(); //Attriute 1 for a Salamander.
+        ui->animalPhysBodyLengthField->show(); //Attriute 2 for a Salamander.
+        ui->animalPhysScaleTypeField->show(); //Attriute 3 for a Salamander.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysFinnSizeField->hide();
+        ui->animalPhysFurLengthField->hide();
+        ui->animalPhysFurColourField->hide();
+        ui->animalPhysWingSpanField->hide();
+        ui->animalPhysBeakLengthField->hide();
+        ui->animalPhysBeakColourField->hide();
+        ui->animalPhysBuildField->hide();
+
+    }
+    else if(typeOfAnimal == "Lizard"){
+        ui->animalSpeciesField->clear();
+        QStringList list=(QStringList()<<"Select the type of species" <<"Gold Tegu"<<"Green Anole"<<"Gila Monster" << "Green Iguana" <<"Desert Iguana" <<"Brown Anole" << "Sand Lizard" << "Marine Iguana" << "Nile Monitor");
+        ui->animalSpeciesField->addItems(list);
+        ui->animalPhysBodyPatternField->show(); //Attriute 1 for a Salamander.
+        ui->animalPhysBodyLengthField->show(); //Attriute 2 for a Salamander.
+        ui->animalPhysScaleTypeField->show(); //Attriute 3 for a Salamander.
+        //Hide other fields(physical attributes not related to this animal)
+        ui->animalPhysFinnSizeField->hide();
+        ui->animalPhysFurLengthField->hide();
+        ui->animalPhysFurColourField->hide();
+        ui->animalPhysWingSpanField->hide();
+        ui->animalPhysBeakLengthField->hide();
+        ui->animalPhysBeakColourField->hide();
+        ui->animalPhysBuildField->hide();
+
+    }
+    //End of Reptiles
+
+
+
+}
+
+/*
+    * This function updates the animal list in order to keep the app updated(its from the Staff's view).
+*/
+void MainWindow::updateAnimalListUI(){
+
+
+    //Clear List and update after.
+    ui->animalsListTable->clear();
+
+    //Size of animals
+    int size = animalsClientsList.animals.size();
+
+    int row =0; //Increment row so adding to the next element(in table) is easier.  - - - -  <----- first column and  first  row
+    //                                                                              - - - -  <----- second column and second row thats what  i mean, you're adding by columns then rows.
+
+    //Setting size of row for the table(based on animals)
+    ui->animalsListTable->setRowCount(animalsClientsList.animals.size());
+    for(int i= 0;i<size; i++){
+
+        QTableWidgetItem *animalNameTable = new QTableWidgetItem();
+        QTableWidgetItem *animalTypeTable = new QTableWidgetItem();
+        QTableWidgetItem *animalSpeciesTable = new QTableWidgetItem();
+        QTableWidgetItem *animalColourTable = new QTableWidgetItem();
+        QTableWidgetItem *animalAgeTable = new QTableWidgetItem();
+        QTableWidgetItem *animalGenderTable = new QTableWidgetItem();
+
+        //Convert Strings to QStrings
+        animalNameTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getName()));
+        animalTypeTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getType()));
+        animalSpeciesTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getSpecies()));
+        animalColourTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getColour()));
+        animalAgeTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getAge()));
+        animalGenderTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getGender()));
+
+        ui->animalsListTable->setItem(row,0,animalNameTable);
+        ui->animalsListTable->setItem(row,1,animalTypeTable);
+        ui->animalsListTable->setItem(row,2,animalSpeciesTable);
+        ui->animalsListTable->setItem(row,3,animalColourTable);
+        ui->animalsListTable->setItem(row,4,animalAgeTable);
+        ui->animalsListTable->setItem(row,5,animalGenderTable);
+
+        row++;
+    }
+    ui->animalsListTable->setHorizontalHeaderLabels(QStringList() << "Name" << "Type" << "Species" << "Colour" << "Age" << "Gender");
+
+
+
+
+
+
+}
+
+/*
+    * This function updates the list UI in order to keep the app updated.
+*/
+void MainWindow::initClientList(){
+
+    //Clear List and update after.
+    ui->clientListTable->clear();
+
+    //Size of clients
+    int size = animalsClientsList.clients.size();
+
+    int row =0; //Increment row so adding to the next element(in table) is easier.  - - - -  <----- first column and  first  row
+    //                                                                              - - - -  <----- second column and second row thats what  i mean, you're adding by columns then rows.
+
+    //Setting size of row for the table(based on clients)
+    ui->clientListTable->setRowCount(animalsClientsList.clients.size());
+    for(int i= 0;i<size; i++){
+
+        QTableWidgetItem *clientFNameTable = new QTableWidgetItem();
+        QTableWidgetItem *clientLNameTable = new QTableWidgetItem();
+        QTableWidgetItem *clientEmailTable = new QTableWidgetItem();
+        QTableWidgetItem *clientPhoneTable = new QTableWidgetItem();
+        QTableWidgetItem *clientAgeTable = new QTableWidgetItem();
+        QTableWidgetItem *clientGenderTable = new QTableWidgetItem();
+
+        //Convert Strings to QStrings
+        clientFNameTable->setText(QString::fromStdString(animalsClientsList.clients.get(i)->getFirstName()));
+        clientLNameTable->setText(QString::fromStdString(animalsClientsList.clients.get(i)->getLastName()));
+        clientEmailTable->setText(QString::fromStdString(animalsClientsList.clients.get(i)->getEmail()));
+        clientPhoneTable->setText(QString::fromStdString(animalsClientsList.clients.get(i)->getPhoneNumber()));
+        clientAgeTable->setText(QString::fromStdString(animalsClientsList.clients.get(i)->getAge()));
+        clientGenderTable->setText(QString::fromStdString(animalsClientsList.clients.get(i)->getGender()));
+
+        ui->clientListTable->setItem(row,0,clientFNameTable);
+        ui->clientListTable->setItem(row,1,clientLNameTable);
+        ui->clientListTable->setItem(row,2,clientPhoneTable);
+        ui->clientListTable->setItem(row,3,clientEmailTable);
+        ui->clientListTable->setItem(row,4,clientAgeTable);
+        ui->clientListTable->setItem(row,5,clientGenderTable);
+
+        row++;
+    }
+    ui->clientListTable->setHorizontalHeaderLabels(QStringList() << "First Name" << "Last Name" << "Phone Number" << "Email Address" << "Age" << "Gender");
+
+}
+
+
+
+
+/*
+    * This function shows the list of animals on GUI.
+*/
+void MainWindow::on_animalsListBtn_clicked()
+{
+    int VIEW_ANIMALS_LIST = 0;
+    showTheCorrectWindow(&VIEW_ANIMALS_LIST);
+
+    updateAnimalListUI();
+}
+
+
+
+/*
+    *This function takes an id from a menu button, in order to know which window to display
+*/
+void MainWindow::showTheCorrectWindow(int* id){
+
+    //Views for Staff view.
+    int viewAnimalsBtn = 0,addAnimalsBtn = 1, addClientBtn = 2, viewClientsBtn =3, launchAcmBtn = 4 ;
+
+
+    //Views for Client view.
+    int viewAnimalsFromClientViewBtn = 5;
+
+    //Show view for animals list
+    if(*id == viewAnimalsBtn){
+        clearFields(0);
+        ui->addAnimalPopUp->hide();
+        ui->addClientPopUp->hide();
+        ui->viewClientsListPopUp->hide();
+        ui->viewAnimalsListPopUp->show();
+
+    }
+    //Show view for adding aniamls
+    else if(*id == addAnimalsBtn){
+        ui->viewAnimalsListPopUp->hide();
+        ui->viewClientsListPopUp->hide();
+        ui->addClientPopUp->hide();
+        ui->addAnimalPopUp->show();
+    }
+    //Show view for adding clients
+    else if(*id == addClientBtn){
+        ui->viewAnimalsListPopUp->hide();
+        ui->viewClientsListPopUp->hide();
+        ui->addAnimalPopUp->hide();
+        ui->addClientPopUp->show();
+    }
+    //Show view for viewing clients
+    else if(*id == viewClientsBtn){
+        ui->viewAnimalsListPopUp->hide();
+        ui->addAnimalPopUp->hide();
+        ui->addClientPopUp->hide();
+        ui->viewClientsListPopUp->show();
+    }
+    //Show View for Launching ACM algorithim
+
+    //Leave space for when the ACM actuall works.
+
+    //CLIENT VIEW IDS
+
+    else if(*id == viewAnimalsFromClientViewBtn){
+        ui->viewAnimalsFromClientView->show();
+    }
+}
+
+
+
+
+/*
+    * This function updates the animals list from Client View.
+*/
+void MainWindow::updateAnimalListFromClientView(){
+
+
+    //Clear List and update after.
+    ui->animalsListFromClientView->clear();
+
+    //Size of animals
+    int size = animalsClientsList.animals.size();
+
+    int row =0; //Increment row so adding to the next element(in table) is easier.  - - - -  <----- first column and  first  row
+    //                                                                              - - - -  <----- second column and second row thats what  i mean, you're adding by columns then rows.
+
+    //Setting size of row for the table(based on animals)
+    ui->animalsListFromClientView->setRowCount(animalsClientsList.animals.size());
+
+    for(int i= 0;i<size; i++){
+
+        qDebug ("ASDAACXZCXZCZXCC SIZEASDAADSAD: %d",size);
+        QTableWidgetItem *animalNameTable = new QTableWidgetItem();
+        QTableWidgetItem *animalTypeTable = new QTableWidgetItem();
+        QTableWidgetItem *animalSpeciesTable = new QTableWidgetItem();
+        QTableWidgetItem *animalColourTable = new QTableWidgetItem();
+        QTableWidgetItem *animalAgeTable = new QTableWidgetItem();
+        QTableWidgetItem *animalGenderTable = new QTableWidgetItem();
+
+        //Convert Strings to QStrings
+        animalNameTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getName()));
+        animalTypeTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getType()));
+        animalSpeciesTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getSpecies()));
+        animalColourTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getColour()));
+        animalAgeTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getAge()));
+        animalGenderTable->setText(QString::fromStdString(animalsClientsList.animals.get(i)->getGender()));
+
+        ui->animalsListFromClientView->setItem(row,0,animalNameTable);
+        ui->animalsListFromClientView->setItem(row,1,animalTypeTable);
+        ui->animalsListFromClientView->setItem(row,2,animalSpeciesTable);
+        ui->animalsListFromClientView->setItem(row,3,animalColourTable);
+        ui->animalsListFromClientView->setItem(row,4,animalAgeTable);
+        ui->animalsListFromClientView->setItem(row,5,animalGenderTable);
+
+        row++;
+    }
+    ui->animalsListFromClientView->setHorizontalHeaderLabels(QStringList() << "Name" << "Type" << "Species" << "Colour" << "Age" << "Gender");
+
+
+}
+
+
+
+
+
+
+/*
+    *This function closes the view for adding a client. and resets the forms.
+*/
+void MainWindow::on_closeClientBtn_clicked()
+{
+    ui->addClientPopUp->hide();
+    ui->clientErrMessage->hide();
+    ui->clientSucessMessage->hide();
+    clearFields(1);
+}
+
+
+
+/*
+    *This function Updates the view UI. for viewing the clients list.
+*/
+void MainWindow::on_viewClientsBtn_clicked()
+{
+    int VIEW_CLIENTS_BTN = 3;
+    showTheCorrectWindow(&VIEW_CLIENTS_BTN);
+    initClientList();
+}
+
+
+
+
+//=======> TRANSITIONS OF USER FLOW
+
+/*
+    *This function swaps pages(going forward) for when a client fills out their info.
+*/
+void MainWindow::on_nextInfoBtn_clicked(){ui->clientForm->setCurrentIndex(2);}
+
+
+/*
+    *This function swaps pages(going backward) for when a client fills out their info.
+*/
+void MainWindow::on_backInfoBtn_clicked(){ui->clientForm->setCurrentIndex(1);}
+
+/*
+    *This function swaps pages(going forward) for when the staff fills out the info for animal
+*/
+void MainWindow::on_animalNextBtn_clicked(){ui->animalForm->setCurrentIndex(1);}
+
+/*
+    *This function swaps pages(going backward) for when the staff fills out the info for animal
+*/
+void MainWindow::on_animalBackBtn_clicked(){ui->animalForm->setCurrentIndex(0);}
+
+
+/*
+    *This function swaps pages(going backward to Non-physical attributes) for when the staff fills out the info for animal
+*/
+void MainWindow::on_backToNonPhysBtn_clicked()
+{
+    ui->animalForm->setCurrentIndex(1);
+}
+
+/*
+    *This function swaps pages(going forward to physical attributes) for when the staff fills out the info for animal
+*/
+void MainWindow::on_animalNextPhysBtn_clicked()
+{
+    ui->animalForm->setCurrentIndex(2);
+}
+
+
+
+/*
+    *This function swaps pages(going to main menu from staff view)
+*/
+void MainWindow::on_backToMenuFromStaffBtn_clicked()
+{
+    ui->stackedWidget->setCurrentIndex(0);
+}
+
+/*
+    *This function swaps pages(going to main menu from client view)
+*/
+void MainWindow::on_backToMainMenuFromClientViewBtn_clicked()
+{
+ ui->stackedWidget->setCurrentIndex(0);
+}
+
+//=======> END OF TRANSITIONS OF USER FLOW
+
+void MainWindow::on_clientAnimalsBtn_clicked()
+{
+    int VIEW_ANIMALS_LIST_FROM_CLIENT = 5;
+    showTheCorrectWindow(&VIEW_ANIMALS_LIST_FROM_CLIENT);
+    updateAnimalListFromClientView();
+}
+
+
+
+
+
+
+
+/*
+    *This function Maps and finds out which row and column on table to store as an object and compare.
+*/
+void MainWindow::on_animalsListTable_cellPressed(int row, int column)
+{
+   //Ignore the column.
+
+
+//    qDebug ("Item pressed Ya donkey: %d", row);
+//    qDebug ("Item pressed Ya donkey: %d", column);
+
+
+    QTableWidgetItem * name = ui->animalsListTable->item(row,0);
+    QTableWidgetItem * type = ui->animalsListTable->item(row,1);
+    QTableWidgetItem * species = ui->animalsListTable->item(row,2);
+    QTableWidgetItem * colour = ui->animalsListTable->item(row,3);
+    QTableWidgetItem * age = ui->animalsListTable->item(row,4);
+    QTableWidgetItem * gender = ui->animalsListTable->item(row,5);
+    ui->viewAnimalDetailsBtn->show();
+    rowTable = row;
+    columnTable = column;
+
+
+//    qDebug ("Name animal:%s", name->text().toUtf8().constData());
+//    qDebug ("animal type:%s", type->text().toUtf8().constData());
+//    qDebug ("animal specie:%s", species->text().toUtf8().constData());
+//    qDebug ("animal colour:%s", colour->text().toUtf8().constData());
+//    qDebug ("animal age:%s", age->text().toUtf8().constData());
+//    qDebug ("animal gender:%s", gender->text().toUtf8().constData());
+
+
+
+
+}
+
+/*
+    *This function shows the animals  detailed profile(from staff View)
+*/
+void MainWindow::on_viewAnimalDetailsBtn_clicked()
+{
+   ui->viewAnimalsListPopUp->setCurrentIndex(1);
+   displayAnimalDetails();
+}
+
+void MainWindow::on_backViewAnimalsBtn_clicked()
+{
+    ui->viewAnimalsListPopUp->setCurrentIndex(0);
+}
+
+
+/*
+    *This function shows the animals  detailed profile(from staff View)
+*/
+void MainWindow::displayAnimalDetails(){
+
+//    QTableWidgetItem * name = ui->animalsListTable->item(rowTable,0);
+//    QTableWidgetItem * type = ui->animalsListTable->item(rowTable,1);
+//    QTableWidgetItem * species = ui->animalsListTable->item(rowTable,2);
+//    QTableWidgetItem * colour = ui->animalsListTable->item(rowTable,3);
+//    QTableWidgetItem * age = ui->animalsListTable->item(rowTable,4);
+//    QTableWidgetItem * gender = ui->animalsListTable->item(rowTable,5);
+
+
+    //Animal Basic info
+    ui->animalNameDetail->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getName()));
+    ui->animalTypeDetail->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getType()));
+    ui->animalSpeciesDetail->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getSpecies()));
+    ui->animalColourDetail->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getColour()));
+    ui->animalAgeDetail->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getAge()));
+    ui->animalGenderDetail->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getGender()));
+
+
+    //Animal Non-Physcial Attrubites.
+    ui->animalNonPhysicalAttr1->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getIndividualism()));
+    ui->animalNonPhysicalAttr2->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getActiveness()));
+    ui->animalNonPhysicalAttr3->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getIntelligence()));
+    ui->animalNonPhysicalAttr4->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getAffectionism()));
+    ui->animalNonPhysicalAttr5->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getDiscipline()));
+    ui->animalNonPhysicalAttr6->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getAssertiveness()));
+    ui->animalNonPhysicalAttr7->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getIntuition()));
+    ui->animalNonPhysicalAttr8->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getImpulsiveness()));
+    ui->animalNonPhysicalAttr9->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getDiurnalNocturnal()));
+    ui->animalNonPhysicalAttr10->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getStaminalLevel()));
+    ui->animalNonPhysicalAttr11->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getEnthusiastic()));
+    ui->animalNonPhysicalAttr12->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getAppetite()));
+
+
+
+    //Animal Physical Attributes
+
+
+    //Mammals
+    if(animalsClientsList.animals.get(rowTable)->getType() == "dog" || animalsClientsList.animals.get(rowTable)->getType() == "cat"){
+        ui->animalAttributeOneField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getMammalHairLength()));
+        ui->animalAttributeTwoField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getMammalHairColour()));
+        ui->animalAttributeThreeField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getBuild()));
+    }
+    //End of Mammals
+
+    //Birds
+    else if(animalsClientsList.animals.get(rowTable)->getType() == "parrot" || animalsClientsList.animals.get(rowTable)->getType() == "finch"){
+        ui->animalAttributeOneField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getWingSpan()));
+        ui->animalAttributeTwoField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getBeakColour()));
+        ui->animalAttributeOneField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getBeakLength()));
+    }
+    //End of Birds
+
+    //Amphibians
+    else if(animalsClientsList.animals.get(rowTable)->getType() == "frog" || animalsClientsList.animals.get(rowTable)->getType() == "salamander"){
+        ui->animalAttributeOneField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getBodyPattern()));
+        ui->animalAttributeTwoField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getLength()));
+        ui->animalAttributeOneField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getBuild()));
+    }
+
+    //Reptiles
+    else if(animalsClientsList.animals.get(rowTable)->getType() == "snake" || animalsClientsList.animals.get(rowTable)->getType() == "lizard"){
+        ui->animalAttributeOneField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getBodyPattern()));
+        ui->animalAttributeTwoField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getLength()));
+        ui->animalAttributeOneField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getScaleType()));
+    }
+    //End of Reptiles
+
+    //Fish
+    else if(animalsClientsList.animals.get(rowTable)->getType() == "betta" || animalsClientsList.animals.get(rowTable)->getType() == "goldfish"){
+        ui->animalAttributeOneField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getBodyPattern()));
+        ui->animalAttributeTwoField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getLength()));
+        ui->animalAttributeOneField->setText(QString::fromStdString(animalsClientsList.animals.get(rowTable)->getFinnsSize()));
+    }
+    //End of Fish
+}
